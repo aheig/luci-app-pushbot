@@ -182,6 +182,28 @@ function getip(){
 	fi
 }
 
+# 全球互联检测
+get_config "send_title" "router_status" "router_temp" "router_wan" "client_list" "google_check_timeout"
+
+	[ -z "$send_title" ] && local send_title="路由状态："
+	[ -z "$google_check_timeout" ] && local google_check_timeout="10"
+	[ ! -z "$1" ] && local send_title="发送测试：" && local send_content="${str_splitline}${str_title_start}内容1${str_title_end}${str_linefeed}${str_tab}设备1${str_linefeed}${str_tab}设备2${str_splitline}${str_title_start}内容2${str_title_end}${str_linefeed}${str_tab}设备3${str_linefeed}${str_tab}设备4"
+	[ -z "$1" ] && [ ! -z "$client_list" ] && [ "$client_list" -eq "1" ] && > ${dir}send_enable.lock && pushbot_first &
+
+	if [ -z "$1" ] && [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ]; then
+		local systemload=`cat /proc/loadavg|awk '{print $1" "$2" "$3}'`
+		local cpuload=`getcpu`
+		local ramload=`free -m|sed -n '2p'|awk '{printf "%.2f%%\n",($3/$2)*100}'`
+		local Qwai=`curl -o /dev/null --connect-timeout ${google_check_timeout} -s -w %{http_code} www.google.com`
+		if [[ "$Qwai" -eq "200" ]] || [[ "$Qwai" -eq "301" ]] || [[ "$Qwai" -eq "302" ]]; then
+			local Qwai_status="已连通！"
+		else
+			local Qwai_status="已断开！"
+		fi
+		local systemstatustime=`cat /proc/uptime|awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("运行时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`;unset run_days run_hour run_minute run_second
+		local send_content="${send_content}${str_splitline}${str_title_start}${font_blue} 系统运行状态${font_end}${str_title_end}"
+	fi
+
 # 获取接口信息
 function getinterfacelist(){
 	[ `ubus list|grep -w -i "network.interface.wan"|wc -l` -ge "1" ] && ubus call network.interface.wan status && return
